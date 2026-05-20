@@ -65,7 +65,8 @@ python-multipart
 ### 1. Clonar/Descargar Proyecto
 
 ```bash
-cd RAG-semantico-con-FastAPI-Celery-y-Redis
+cd RAG-FastAPI-Redis-Celery
+
 ```
 
 ### 2. Crear Entorno Virtual

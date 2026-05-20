@@ -1,3 +1,6 @@
+#sudo docker start redis-stack
+#celery -A celery_app:app_celery worker --loglevel=info
+
 from fastapi import FastAPI, File, UploadFile
 import os
 import shutil

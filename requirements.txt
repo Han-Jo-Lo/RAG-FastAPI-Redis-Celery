@@ -11,3 +11,4 @@ redis
 celery
 uvicorn
 python-multipart
+langgraph-checkpoint-redis
