@@ -1,0 +1,13 @@
+langchain
+langchain_community
+langchain-openai
+langchain_experimental
+langgraph
+python-dotenv
+pypdf
+chromadb
+fastapi
+redis
+celery
+uvicorn
+python-multipart
