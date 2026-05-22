@@ -12,3 +12,4 @@ celery
 uvicorn
 python-multipart
 langgraph-checkpoint-redis
+langchain-chroma

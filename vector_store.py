@@ -1,5 +1,5 @@
 from langchain_openai.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma 
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,7 +16,6 @@ class VectorStoreManager:
             embedding=self.embeddings,
             persist_directory=self.persist_directory
         )
-        self.vector_store.persist()
         return self.vector_store
 
     def load(self):
@@ -28,14 +27,16 @@ class VectorStoreManager:
         return self.vector_store
 
     def retrieve(self, query: str, k: int = 3):
-        # Aseguramos que la DB esté cargada
         db = self.load()
         retriever = db.as_retriever(search_kwargs={"k": k})
         return retriever.invoke(query)
 
+    def retrieve_with_score(self, query: str, k: int = 3):
+        db = self.load()
+        return db.similarity_search_with_score(query=query, k=k)
+
     def delete_by_source(self, source_name: str):
         db = self.load()
-        # Buscamos los IDs de los documentos que coincidan con la fuente
         docs = db.get(where={"source": source_name})
         if docs["ids"]:
             db.delete(ids=docs["ids"])
@@ -45,6 +46,7 @@ class VectorStoreManager:
         if provider == "openai":
             self.embeddings = OpenAIEmbeddings(model='text-embedding-ada-002')
         elif provider == "huggingface":
-            from langchain_community.embeddings import HuggingFaceEmbeddings
+            # Nota: Si usas HuggingFace en el futuro, también es recomendable 
+            # instalar langchain-huggingface para evitar alertas similares.
+            from langchain_huggingface import HuggingFaceEmbeddings
             self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    

@@ -5,6 +5,7 @@ from fastapi import FastAPI, File, UploadFile
 import os
 import shutil
 from pydantic import BaseModel
+from pathlib import Path
 
 from tasks import run_llm_graph
 from celery.result import AsyncResult
@@ -50,7 +51,8 @@ async def upload(file:UploadFile=File(...)):
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    task=load_store_doc.delay(file_path=file_path,database_name=file.filename)
+    db_name = Path(file.filename).stem
+    task=load_store_doc.delay(file_path=file_path,database_name=db_name)
 
     return {
         'task_id':task.id,

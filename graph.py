@@ -1,5 +1,5 @@
 import os
-from langchain_core.messages import SystemMessage,RemoveMessage
+from langchain_core.messages import SystemMessage,RemoveMessage,AIMessage
 from typing import TypedDict,Annotated
 from langgraph.graph.message import add_messages
 from langgraph.graph import START,END,StateGraph
@@ -28,6 +28,7 @@ class State(TypedDict):
     retrieve_context:str
     summary:str
     no_answer:bool
+    has_context:bool
     
 
 
@@ -35,9 +36,24 @@ def build_graph(vector_store:VectorStoreManager,checkpointer=None):
     
     def context_node(state:State):
         pregunta=state['messages'][-1].content
-        context=vector_store.retrieve(pregunta)
-        context_str = "\n\n---\n\n".join(doc.page_content for doc in context)
-        return {"retrieve_context": context_str}
+        result=vector_store.retrieve_with_score(pregunta)
+
+        relevant_docs=[doc for doc,score in result if score<0.5]
+        context_str = "\n\n---\n\n".join(doc.page_content for doc in relevant_docs)
+
+        has_context=len(relevant_docs)>0
+        print('--------'+str(has_context))
+        return {
+            "retrieve_context": context_str,
+            'has_context':has_context
+            }
+
+    def should_continue(state:State):
+        if state['has_context']:
+            return 'chatbot'
+        else:
+            return 'no_answer'
+            
 
     def chatbot_node(state:State):
         context=state['retrieve_context']
@@ -59,6 +75,12 @@ def build_graph(vector_store:VectorStoreManager,checkpointer=None):
         return {'messages':[response]}
 
     def unknown_answer(state:State):
+        if not state['has_context']:
+            return{
+                'messages':[AIMessage(content='Lo siento, no tengo esa información')],
+                'no_answer':True
+            }
+
         last_message=state['messages'][-1].content
         flag_question='Lo siento, no tengo esa información' in last_message
         return {'no_answer':flag_question}
@@ -71,6 +93,7 @@ def build_graph(vector_store:VectorStoreManager,checkpointer=None):
         if len(messages) < 10:
             return {}
 
+        messages_to_summarize=messages[-6:]
         prompt_msgs = [SystemMessage(content=(
         f"resumen actual: {summary} \n\n"
         f'Eres un sistema que hace resumen de una conversacion utilizando\n'
@@ -99,7 +122,16 @@ def build_graph(vector_store:VectorStoreManager,checkpointer=None):
     builder.add_node('no_answer',unknown_answer)
 
     builder.add_edge(START, "context")
-    builder.add_edge("context", "chatbot")
+
+    builder.add_conditional_edges(
+        source='context',
+        path=should_continue,
+        path_map={
+            'chatbot':'chatbot',
+            'no_answer':'no_answer'
+        }
+    )
+
     builder.add_edge("chatbot", 'no_answer')
 
     builder.add_conditional_edges(
@@ -110,6 +142,7 @@ def build_graph(vector_store:VectorStoreManager,checkpointer=None):
             END:END
         }
     )
+    builder.add_edge("summarize", END)
 
     return builder.compile(checkpointer=checkpointer)
 

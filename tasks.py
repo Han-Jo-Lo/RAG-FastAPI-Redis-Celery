@@ -17,7 +17,7 @@ def get_vector_store_for_db(db_name:str):
     vs.load()
     return vs
 
-checkpointer=get_redis()
+
 
 @app_celery.task
 def run_llm_graph(user_id:str,message:str,db_name:str):
@@ -27,7 +27,7 @@ def run_llm_graph(user_id:str,message:str,db_name:str):
     message_to_llm=HumanMessage(content=message)
 
     vs=get_vector_store_for_db(db_name)
-    
+    checkpointer=get_redis()
     Graph=build_graph(vs,checkpointer)
 
     response=Graph.invoke({'messages':[message_to_llm]},config=config)
